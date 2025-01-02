@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Set up the welcome message
         TextView welcomeMessage = findViewById(R.id.welcome_message);
-        welcomeMessage.setText("Welcome to Attendance App");
+        welcomeMessage.setText("Welcome to Attendance App!");
 
         // Set up the login button
         Button loginButton = findViewById(R.id.welcome_button);
