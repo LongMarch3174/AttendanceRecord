@@ -25,26 +25,28 @@ public class ProfileFragment extends Fragment {
 
     private static final String SHARED_PREFS = "userPrefs";
 
+    private TextView usernameText;
+    private TextView emailText;
+    private ImageView avatarImage;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
 
-        TextView usernameText = view.findViewById(R.id.username_text);
-        TextView emailText = view.findViewById(R.id.email_text);
-        ImageView avatarImage = view.findViewById(R.id.avatar_image);
+        usernameText = view.findViewById(R.id.username_text);
+        emailText = view.findViewById(R.id.email_text);
+        avatarImage = view.findViewById(R.id.avatar_image);
         Button settingsButton = view.findViewById(R.id.settings_button);
         Button editProfileButton = view.findViewById(R.id.edit_profile_button);
         Button logoutButton = view.findViewById(R.id.logout_button);
 
-        // 获取传递过来的用户名并显示
         String username = requireActivity().getIntent().getStringExtra("username");
         if (username != null) {
             usernameText.setText(username);
         }
 
-        // 从服务端获取用户数据
-        fetchUserInfo(usernameText, emailText, avatarImage, username);
+        fetchUserInfo(username);
 
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), SettingsActivity.class);
@@ -62,38 +64,43 @@ public class ProfileFragment extends Fragment {
             startActivity(intent);
         });
 
-        logoutButton.setOnClickListener(v -> {
-            logout();
-        });
+        logoutButton.setOnClickListener(v -> logout());
 
         return view;
     }
 
-    private void fetchUserInfo(TextView usernameText, TextView emailText, ImageView avatarImage, String passedUsername) {
+    @Override
+    public void onResume() {
+        super.onResume();
+        String username = requireActivity().getIntent().getStringExtra("username");
+        if (username != null) {
+            fetchUserInfo(username);
+        }
+    }
+
+    private void fetchUserInfo(String username) {
         new Thread(() -> {
             try {
                 JSONObject jsonRequest = new JSONObject();
-                jsonRequest.put("username", passedUsername);
+                jsonRequest.put("username", username);
 
                 HttpURLConnection connection = HttpRequestHelper.createPostRequest("/fetchUserInfo", jsonRequest);
                 String response = HttpRequestHelper.getResponse(connection);
 
                 JSONObject jsonResponse = new JSONObject(response);
                 if ("success".equals(jsonResponse.optString("status"))) {
-                    String username = jsonResponse.optString("username");
+                    String updatedUsername = jsonResponse.optString("username");
                     String email = jsonResponse.optString("email");
-                    int avatarResource = R.drawable.default_avatar; // 可以从服务器返回头像路径处理
+                    int avatarResource = R.drawable.default_avatar;
 
-                    // 保存用户数据到 SharedPreferences
                     SharedPreferences sharedPreferences = requireActivity().getSharedPreferences(SHARED_PREFS, Context.MODE_PRIVATE);
                     SharedPreferences.Editor editor = sharedPreferences.edit();
-                    editor.putString("username", username);
+                    editor.putString("username", updatedUsername);
                     editor.putString("email", email);
                     editor.apply();
 
-                    // 更新 UI
                     requireActivity().runOnUiThread(() -> {
-                        usernameText.setText(username);
+                        usernameText.setText(updatedUsername);
                         emailText.setText(email);
                         avatarImage.setImageResource(avatarResource);
                     });
@@ -108,16 +115,13 @@ public class ProfileFragment extends Fragment {
     }
 
     private void logout() {
-        // 提示用户注销成功
         Toast.makeText(getActivity(), "已注销", Toast.LENGTH_SHORT).show();
 
-        // 清空 SharedPreferences
         SharedPreferences sharedPreferences = requireActivity().getSharedPreferences(SHARED_PREFS, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.clear();
         editor.apply();
 
-        // 返回登录界面
         Intent intent = new Intent(getActivity(), LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
